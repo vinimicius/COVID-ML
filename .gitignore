@@ -1,0 +1,8 @@
+# Previne que o git suba os dados pro repositório, exceto o dados brutos
+data/*
+!data/data.zip
+
+# Ignora sujeira de sistema e cache de código
+.ipynb_checkpoints/
+__pycache__/
+.DS_Store
