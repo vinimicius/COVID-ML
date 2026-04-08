@@ -149,15 +149,14 @@ def clean_data(df):
 
 def pre_process(df):
     """
-    Realiza a engenharia de recursos: binarização, encoding e tipagem.
-    
+    Realiza a engenharia de recursos: binarização, encoding, escalonamento e tipagem.    
     Args:
         df (pd.DataFrame): DataFrame limpo pela função clean_data.
         
     Returns:
         pd.DataFrame: Dataset puramente numérico (inteiros).
     """
-    from sklearn.preprocessing import OneHotEncoder
+    from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
 
     if df is None:
         raise ValueError("❌ Erro: O DataFrame fornecido para pré-processamento é nulo.")
@@ -167,7 +166,12 @@ def pre_process(df):
 
     # 1. Binarização de Respostas (Sim/Não) e Strings Numéricas
     print("🔄 Binarizando colunas de doenças e sintomas...")
-    binary_map = {'SIM': 1, 'NÃO': 0, '1': 1, '0': 0}
+    binary_map = {
+    'SIM': 1, 
+    'NÃO': 0, 
+    'NÃ\x83O': 0,  # Necessário pra evitar erros
+    '1': 1, 
+    '0': 0}
     df_proc.replace(binary_map, inplace=True)
 
     # 2. One-Hot Encoding para Sexo
@@ -178,36 +182,40 @@ def pre_process(df):
     encoded_data = encoder.fit_transform(df_proc[['cs_sexo']])
     encoded_df = pd.DataFrame(
         encoded_data, 
-        columns=['FEMININO', 'MASCULINO'], 
+        columns=['F', 'M'], 
         index=df_proc.index
     )
     
     # Substituição da coluna original pelas novas binárias
     df_proc = pd.concat([encoded_df, df_proc.drop(columns=['cs_sexo'])], axis=1)
 
-    # 3. Inspeção e Tratamento de Inconsistências
+    # 3. Escalonamento da Idade (Crucial para a sensibilidade do modelo)
+    print(f"📏 Aplicando MinMaxScaler na idade (Max original: {df_proc['idade'].max()})...")
+    scaler = MinMaxScaler()
+    df_proc['idade'] = scaler.fit_transform(df_proc[['idade']])
+
+    # 4. Inspeção e Tratamento de Inconsistências (Mantendo seus logs de segurança)
     non_numeric = df_proc.select_dtypes(exclude=['number']).columns
     
     if len(non_numeric) > 0:
         print(f"⚠️ Alerta: Colunas com texto detectadas: {list(non_numeric)}")
         for col in non_numeric:
-            valores_estranhos = df_proc[col].unique()[:5]
-            print(f"   - Coluna '{col}' possui valores como: {valores_estranhos}")
-            
-        print("   -> Convertendo para numérico e descartando incompatíveis...")
-        for col in non_numeric:
+            exemplos = df_proc[col].unique()[:5]
+            print(f"   - Coluna '{col}' contém valores inesperados como: {exemplos}")
             df_proc[col] = pd.to_numeric(df_proc[col], errors='coerce')
         
-        # Removemos apenas as linhas que geraram erro na conversão acima
         df_proc.dropna(inplace=True)
 
-    # 4. Otimização Final de Memória e Tipos
-    # Garantimos que 'idade' é int e depois todo o DF vira int
-    print("📉 Otimizando tipos de dados para economia de memória...")
-    df_proc['idade'] = df_proc['idade'].astype(int)
-    df_proc = df_proc.astype(int)
+    # 5. Otimização Final (Tipagem Híbrida para não destruir o Scaler)
+    print("📉 Otimizando memória: float32 (idade) e int8 (binários)...")
+    for col in df_proc.columns:
+        if col == 'idade':
+            df_proc[col] = df_proc[col].astype('float32')
+        else:
+            # int8 ocupa apenas 1 byte por linha, ideal para 0 e 1
+            df_proc[col] = df_proc[col].astype('int8')
 
-    print(f"✅ Pré-processamento finalizado. Shape: {df_proc.shape[0]:,} linhas x {df_proc.shape[1]} colunas.")
+    print(f"✅ Pré-processamento finalizado. Shape: {df_proc.shape}")
     return df_proc
 
 
