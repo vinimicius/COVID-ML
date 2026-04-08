@@ -158,6 +158,10 @@ def pre_process(df):
     """
     from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
 
+
+    # Opt-in para o novo comportamento do Pandas (silencia o FutureWarning)
+    pd.set_option('future.no_silent_downcasting', True)
+    
     if df is None:
         raise ValueError("❌ Erro: O DataFrame fornecido para pré-processamento é nulo.")
     
