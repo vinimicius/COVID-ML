@@ -2,6 +2,10 @@
 data/*
 !data/data.zip
 
+# Previne que o git suba os relatórios
+
+reports/
+
 # Ignora sujeira de sistema e cache de código
 .ipynb_checkpoints/
 __pycache__/
