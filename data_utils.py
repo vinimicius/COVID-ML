@@ -193,6 +193,9 @@ def pre_process(df):
     # Substituição da coluna original pelas novas binárias
     df_proc = pd.concat([encoded_df, df_proc.drop(columns=['cs_sexo'])], axis=1)
 
+    # Preservamos a idade sem o scaler para segmentação de grupo
+    df_proc['idade_raw'] = df_proc['idade'].astype(int)
+
     # 3. Escalonamento da Idade (Crucial para a sensibilidade do modelo)
     print(f"📏 Aplicando MinMaxScaler na idade (Max original: {df_proc['idade'].max()})...")
     scaler = MinMaxScaler()
@@ -215,9 +218,13 @@ def pre_process(df):
     for col in df_proc.columns:
         if col == 'idade':
             df_proc[col] = df_proc[col].astype('float32')
+
+        elif col == 'idade_raw':
+            df_proc[col] = df_proc[col].astype('int16') #considerar trocar pra int8 futuramente
+
         else:
             # int8 ocupa apenas 1 byte por linha, ideal para 0 e 1
-            df_proc[col] = df_proc[col].astype('int8')
+            df_proc[col] = df_proc[col].astype('int8') 
 
     print(f"✅ Pré-processamento finalizado. Shape: {df_proc.shape}")
     return df_proc
