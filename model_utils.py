@@ -20,19 +20,21 @@ def split_age_groups(df, groups_dict):
         processed_groups[name] = df[mask].drop(columns=['idade_raw'])
     return processed_groups
 
-def run_random_forest_pipeline(X_train, y_train, group_name):
+def run_random_forest_pipeline(X_train, y_train, group_name, param_grid=None):
     """
     Executa GridSearchCV e retorna o melhor estimador e seus parâmetros.
+    Se param_grid for None, usa um padrão seguro.
     """
     print(f'\n🔍 Iniciando Grid Search: {group_name}')
     rf = RandomForestClassifier(criterion='entropy', random_state=42, 
                                 class_weight='balanced', n_jobs=-1)
 
-    param_grid = {
-        'n_estimators': [50, 100, 200],
-        'max_depth': [None, 10, 20],
-        'min_samples_split': [2, 5, 10]
-    }
+    if param_grid is None:
+        param_grid = {
+            'n_estimators': [100, 200],
+            'max_depth': [None, 10, 20],
+            'min_samples_split': [2, 5]
+        }
 
     grid_search = GridSearchCV(rf, param_grid, cv=3, scoring="roc_auc", verbose=1)
     grid_search.fit(X_train, y_train)
