@@ -20,6 +20,8 @@ def split_age_groups(df, groups_dict):
         processed_groups[name] = df[mask].drop(columns=['idade_raw'])
     return processed_groups
 
+
+
 def run_random_forest_pipeline(X_train, y_train, group_name, param_grid=None):
     """
     Executa GridSearchCV e retorna o melhor estimador e seus parâmetros.
@@ -41,6 +43,8 @@ def run_random_forest_pipeline(X_train, y_train, group_name, param_grid=None):
     
     return grid_search.best_estimator_, grid_search.best_params_
 
+
+
 def save_model_assets(model, params, group_name):
     """Persiste o modelo (.pkl) e os parâmetros (.json) em disco."""
     os.makedirs('models', exist_ok=True)
@@ -53,17 +57,41 @@ def save_model_assets(model, params, group_name):
         json.dump(params, f, indent=4)
     print(f"💾 Assets de '{group_name}' salvos em /models")
 
+
+
 def get_model_predictions(model, X_test):
     """Retorna predições de classe e probabilidades."""
     y_pred = model.predict(X_test)
     y_proba = model.predict_proba(X_test)[:, 1]
     return y_pred, y_proba
 
-def calculate_metrics(y_test, y_pred, y_proba):
-    """Calcula métricas principais e retorna como dicionário."""
-    report = classification_report(y_test, y_pred, output_dict=True)
-    report['roc_auc'] = roc_auc_score(y_test, y_proba)
-    return report
+
+
+def display_group_report(y_test, y_pred, y_proba, group_name):
+    """
+    Exibe o relatório, calcula AUC e retorna um DataFrame estruturado.
+    Recebe as predições prontas para evitar dependência do objeto do modelo.
+    """
+
+    # 1. Exibição Visual
+    print(f"\n" + "="*50)
+    print(f"📊 RELATÓRIO DE CLASSIFICAÇÃO: {group_name.upper()}")
+    print("="*50)
+    print(classification_report(y_test, y_pred))
+    
+    # 2. Cálculo do Dicionário
+    report_dict = classification_report(y_test, y_pred, output_dict=True)
+    
+    # 3. Adiciona a métrica que o classification_report não traz por padrão
+    report_dict['roc_auc'] = roc_auc_score(y_test, y_proba)
+    
+    # 4. Transformação em DataFrame para o seu dicionário 'all_reports'
+    report_df = pd.DataFrame(report_dict).transpose()
+    report_df['group'] = group_name
+    
+    return report_df
+
+
 
 def export_visual_reports(model, X_test, y_test, y_pred, group_name):
     """Gera e salva Matriz de Confusão e Feature Importance sem poluir o notebook."""
