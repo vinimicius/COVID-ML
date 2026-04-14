@@ -10,15 +10,44 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_auc_sco
 
 def split_age_groups(df, groups_dict):
     """
-    Divide o DataFrame com base no dicionário de faixas etárias.
-    Utiliza 'idade_raw' para o filtro e retorna apenas a 'idade' escalonada.
+    Divide o DataFrame e retorna os grupos processados E um dicionário de estatísticas.
+    Exibe um log detalhado da distribuição das amostras.
     """
     processed_groups = {}
+    group_stats = {}
+    
+    print(f"\n{'='*60}")
+    print(f"{'📊 RELATÓRIO DE DIVISÃO POR FAIXA ETÁRIA':^60}")
+    print(f"{'='*60}")
+    
     for name, (min_age, max_age) in groups_dict.items():
+        # 1. Filtro
         mask = (df['idade_raw'] >= min_age) & (df['idade_raw'] < max_age)
-        # Removemos idade_raw para o modelo não sofrer com redundância
-        processed_groups[name] = df[mask].drop(columns=['idade_raw'])
-    return processed_groups
+        group_df = df[mask].copy()
+        
+        if len(group_df) > 0:
+            # 2. Cálculo de Estatísticas (Metadados)
+            total = len(group_df)
+            obitos = int(group_df['obito'].sum())
+            prevalence = round((obitos / total) * 100, 2)
+            
+            group_stats[name] = {
+                "n_samples": total,
+                "n_obitos": obitos,
+                "prevalence_percent": prevalence,
+                "age_range": [min_age, max_age]
+            }
+            
+            # Log individual
+            print(f"🔹 {name.upper():<15} | Range: [{min_age:>2}, {max_age:>3}) | Amostras: {total:>6} | Óbitos: {obitos:>4} ({prevalence:>5}%)")
+            
+            # 3. Preparação para o modelo (Removemos idade_raw)
+            processed_groups[name] = group_df.drop(columns=['idade_raw'])
+        else:
+            print(f"⚠️  {name.upper():<15} | Range: [{min_age:>2}, {max_age:>3}) | GRUPO VAZIO")
+
+    print(f"{'='*60}\n")
+    return processed_groups, group_stats
 
 
 
@@ -42,20 +71,6 @@ def run_random_forest_pipeline(X_train, y_train, group_name, param_grid=None):
     grid_search.fit(X_train, y_train)
     
     return grid_search.best_estimator_, grid_search.best_params_
-
-
-
-def save_model_assets(model, params, group_name):
-    """Persiste o modelo (.pkl) e os parâmetros (.json) em disco."""
-    os.makedirs('models', exist_ok=True)
-    
-    # Salva o binário do modelo
-    joblib.dump(model, f'models/rf_{group_name.replace("-","")}.pkl')
-    
-    # Salva os parâmetros para documentação futura
-    with open(f'models/params_{group_name.replace("-","")}.json', 'w') as f:
-        json.dump(params, f, indent=4)
-    print(f"💾 Assets de '{group_name}' salvos em /models")
 
 
 
@@ -93,16 +108,20 @@ def display_group_report(y_test, y_pred, y_proba, group_name):
 
 
 
-def export_visual_reports(model, X_test, y_test, y_pred, group_name):
-    """Gera e salva Matriz de Confusão e Feature Importance sem poluir o notebook."""
-    os.makedirs('reports', exist_ok=True)
+def export_visual_reports(model, X_test, y_test, y_pred, group_name, save_path=None):
+    """Gera e salva Matriz de Confusão e Feature Importance."""
+    # Se não passarmos caminho, ele usa a pasta 'reports' na raiz
+    target_dir = save_path if save_path else 'reports'
+    os.makedirs(target_dir, exist_ok=True)
+    
+    clean_name = group_name.replace("-", "")
     
     # 1. Matriz de Confusão
     plt.figure(figsize=(8, 6))
     cm = confusion_matrix(y_test, y_pred)
     sns.heatmap(cm, annot=True, fmt='d', cmap='Purples')
     plt.title(f'Matriz de Confusão - {group_name}')
-    plt.savefig(f'reports/cm_{group_name.replace("-","")}.png')
+    plt.savefig(os.path.join(target_dir, f'cm_{clean_name}.png'))
     plt.close()
 
     # 2. Feature Importance
@@ -111,5 +130,5 @@ def export_visual_reports(model, X_test, y_test, y_pred, group_name):
     importances.plot(kind='barh', color='indigo')
     plt.title(f"Importância de Atributos - {group_name}")
     plt.tight_layout()
-    plt.savefig(f'reports/features_{group_name.replace("-","")}.png')
+    plt.savefig(os.path.join(target_dir, f'features_{clean_name}.png'))
     plt.close()
