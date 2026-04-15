@@ -277,3 +277,21 @@ def run_pipeline(data_dir='data', export=True):
     
     print("🏁 Pipeline finalizado.")
     return df_final
+
+
+def test_data(data_dir='data', export=True):
+    raw_path = extract(data_dir)
+    df_raw = import_data(raw_path)
+
+    cols_to_remove = [
+        'data_inicio_sintomas', 'codigo_ibge', 
+        'diagnostico_covid19', 'nome_munic'
+    ]
+    
+    print("🧹 Iniciando limpeza dos dados...")
+
+    # 2. Remoção de Colunas (Drop antecipado para liberar memória)
+    df_cleaned = df.drop(columns=cols_to_remove).copy()
+    print(f"   - {len(cols_to_remove)} colunas desnecessárias removidas.")
+
+    return df_cleaned
