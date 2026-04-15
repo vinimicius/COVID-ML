@@ -291,7 +291,7 @@ def test_data(data_dir='data', export=True):
     print("🧹 Iniciando limpeza dos dados...")
 
     # 2. Remoção de Colunas (Drop antecipado para liberar memória)
-    df_cleaned = df.drop(columns=cols_to_remove).copy()
+    df_cleaned = df_raw.drop(columns=cols_to_remove).copy()
     print(f"   - {len(cols_to_remove)} colunas desnecessárias removidas.")
 
     return df_cleaned
