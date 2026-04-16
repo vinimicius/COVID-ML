@@ -130,6 +130,12 @@ def clean_data(df):
     df_cleaned[disease_cols] = df_cleaned[disease_cols].replace('IGNORADO', 'NÃO')
     print("   - Valores 'IGNORADO' convertidos para 'NÃO'.")
 
+    initial_count = len(df_cleaned)
+    df_cleaned = df_cleaned[(df_cleaned['idade'] >= 0) & (df_cleaned['idade'] <= 120)]
+    removed_outliers = initial_count - len(df_cleaned)
+    if removed_outliers > 0:
+        print(f"   - {removed_outliers} linhas removidas por idade inválida (<0 ou >120).")
+
     # Agora o dropna só vai tirar o que for nulo de verdade (NaN)
     df_cleaned = df_cleaned.dropna()
 
@@ -202,7 +208,7 @@ def pre_process(df):
     if 'idade' in df_proc.columns:
         df_proc['idade_raw'] = df_proc['idade'].astype(int)
     
-    return df_proc
+
 
     # 3. Escalonamento da Idade (Crucial para a sensibilidade do modelo)
     print(f"📏 Aplicando MinMaxScaler na idade (Max original: {df_proc['idade'].max()})...")
