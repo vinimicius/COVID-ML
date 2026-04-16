@@ -127,11 +127,11 @@ def clean_data(df):
 
     # 3. Filtragem de Valores 'IGNORADO'
     # .all(axis=1) garante que a linha só fica se TODAS as colunas de doença forem válidas
+    df_cleaned[disease_cols] = df_cleaned[disease_cols].replace('IGNORADO', 'NÃO')
+    print("   - Valores 'IGNORADO' convertidos para 'NÃO'.")
 
-
-    # 4. Remoção de Valores Nulos (NaN) residuais
+    # Agora o dropna só vai tirar o que for nulo de verdade (NaN)
     df_cleaned = df_cleaned.dropna()
-    print("   - Linhas com valores nulos (NaN) removidas.")
 
     # 5. Relatório de Eficiência
     final_rows = len(df_cleaned)
@@ -166,38 +166,43 @@ def pre_process(df):
     # Trabalhamos em uma cópia para evitar efeitos colaterais no DF original
     df_proc = df.copy()
 
-    # 1. Binarização de Respostas (Sim/Não) e Strings Numéricas
-    print("🔄 Binarizando colunas de doenças e sintomas...")
+    # 1. Binarização Robusta
+    # Adicionamos o 'IGNORADO' aqui também por segurança
     binary_map = {
-    'SIM': 1, 
-    'NÃO': 0, 
-    'NÃ\x83O': 0,
-    'IGNORADO': 0,  # Necessário pra evitar erros
-    '1': 1, 
-    '0': 0}
-    df_proc.replace(binary_map, inplace=True)
+        'SIM': 1, '1': 1, 1: 1,
+        'NÃO': 0, 'NÃ\x83O': 0, '0': 0, 0: 0,
+        'IGNORADO': 0  # Garantia dupla
+    }
+    
+    # Aplicamos apenas nas colunas que não são Sexo ou Idade
+    cols_to_map = df_proc.columns.difference(['cs_sexo', 'idade'])
+    df_proc[cols_to_map] = df_proc[cols_to_map].replace(binary_map)
 
-    # 2. One-Hot Encoding para Sexo
+    # 2. One-Hot Encoding SEGURO para Sexo
     print("🧬 Aplicando One-Hot Encoding em 'cs_sexo'...")
+    
+    # Forçamos a conversão para string para evitar erro de tipos mistos (int/str)
+    df_proc['cs_sexo'] = df_proc['cs_sexo'].astype(str).str.upper()
+    
     encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
     
-
-    df_proc['cs_sexo'] = df_proc['cs_sexo'].astype(str)
-
-    
-    # Criamos o DataFrame encodado com nomes de colunas explícitos
+    # O segredo: deixar o encoder decidir os nomes das colunas
     encoded_data = encoder.fit_transform(df_proc[['cs_sexo']])
+    column_names = [f"sexo_{cat}" for cat in encoder.categories_[0]]
+    
     encoded_df = pd.DataFrame(
         encoded_data, 
-        columns=['F', 'M'], 
+        columns=column_names, 
         index=df_proc.index
     )
     
-    # Substituição da coluna original pelas novas binárias
     df_proc = pd.concat([encoded_df, df_proc.drop(columns=['cs_sexo'])], axis=1)
 
-    # Preservamos a idade sem o scaler para segmentação de grupo
-    df_proc['idade_raw'] = df_proc['idade'].astype(int)
+    # 3. Tipagem Final
+    if 'idade' in df_proc.columns:
+        df_proc['idade_raw'] = df_proc['idade'].astype(int)
+    
+    return df_proc
 
     # 3. Escalonamento da Idade (Crucial para a sensibilidade do modelo)
     print(f"📏 Aplicando MinMaxScaler na idade (Max original: {df_proc['idade'].max()})...")
@@ -256,7 +261,6 @@ def export_data(df, data_dir='data'):
 
 
 
-
 def run_pipeline(data_dir='data', export=True):
     """
     Executa o fluxo completo. Se export=True, salva o resultado em disco.
@@ -281,30 +285,3 @@ def run_pipeline(data_dir='data', export=True):
     
     print("🏁 Pipeline finalizado.")
     return df_final
-
-
-def test_data(data_dir='data', export=True):
-    raw_path = extract(data_dir)
-    df_raw = import_data(raw_path)
-
-    cols_to_remove = [
-        'data_inicio_sintomas', 'codigo_ibge', 
-        'diagnostico_covid19', 'nome_munic'
-    ]
-    
-    print("🧹 Iniciando limpeza dos dados...")
-
-    # 2. Remoção de Colunas (Drop antecipado para liberar memória)
-    df_cleaned = df_raw.drop(columns=cols_to_remove).copy()
-    print(f"   - {len(cols_to_remove)} colunas desnecessárias removidas.")
-
-    df_final = pre_process(df_cleaned)
-
-    # 5. Exportação (Nova etapa condicional)
-    if export:
-        export_data(df_final, data_dir)
-    
-    print("🏁 Pipeline finalizado.")
-    return df_final
-
-    
