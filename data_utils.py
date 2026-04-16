@@ -181,6 +181,10 @@ def pre_process(df):
     print("🧬 Aplicando One-Hot Encoding em 'cs_sexo'...")
     encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
     
+
+    df_proc['cs_sexo'] = df_proc['cs_sexo'].astype(str)
+
+    
     # Criamos o DataFrame encodado com nomes de colunas explícitos
     encoded_data = encoder.fit_transform(df_proc[['cs_sexo']])
     encoded_df = pd.DataFrame(
