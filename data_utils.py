@@ -127,7 +127,6 @@ def clean_data(df):
 
     # 3. Filtragem de Valores 'IGNORADO'
     # .all(axis=1) garante que a linha só fica se TODAS as colunas de doença forem válidas
-    valid_mask = (df_cleaned[disease_cols] != 'IGNORADO').all(axis=1)
     df_cleaned = df_cleaned[valid_mask]
     print("   - Linhas com valores 'IGNORADO' descartadas.")
 
@@ -173,7 +172,8 @@ def pre_process(df):
     binary_map = {
     'SIM': 1, 
     'NÃO': 0, 
-    'NÃ\x83O': 0,  # Necessário pra evitar erros
+    'NÃ\x83O': 0,
+    'IGNORADO': 0,  # Necessário pra evitar erros
     '1': 1, 
     '0': 0}
     df_proc.replace(binary_map, inplace=True)
@@ -253,6 +253,7 @@ def export_data(df, data_dir='data'):
 
 
 
+
 def run_pipeline(data_dir='data', export=True):
     """
     Executa o fluxo completo. Se export=True, salva o resultado em disco.
@@ -294,4 +295,13 @@ def test_data(data_dir='data', export=True):
     df_cleaned = df_raw.drop(columns=cols_to_remove).copy()
     print(f"   - {len(cols_to_remove)} colunas desnecessárias removidas.")
 
-    return df_cleaned
+    df_final = pre_process(df_cleaned)
+
+    # 5. Exportação (Nova etapa condicional)
+    if export:
+        export_data(df_final, data_dir)
+    
+    print("🏁 Pipeline finalizado.")
+    return df_final
+
+    
