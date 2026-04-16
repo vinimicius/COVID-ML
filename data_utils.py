@@ -127,8 +127,7 @@ def clean_data(df):
 
     # 3. Filtragem de Valores 'IGNORADO'
     # .all(axis=1) garante que a linha só fica se TODAS as colunas de doença forem válidas
-    df_cleaned = df_cleaned[valid_mask]
-    print("   - Linhas com valores 'IGNORADO' descartadas.")
+
 
     # 4. Remoção de Valores Nulos (NaN) residuais
     df_cleaned = df_cleaned.dropna()
